@@ -1,0 +1,207 @@
+# AGENTS.md
+
+## P0 规则（最高优先级）
+
+1. **使用中文** — 所有回复、注释说明、commit message 描述均使用中文（代码本身保持英文）。
+2. **使用东八区时区** — 所有涉及时间的操作（回测时间范围、数据分析、日志解读等）默认使用 UTC+8（Asia/Shanghai）时区。
+3. **绝对禁止修改 `freqtrade/` 源码** — 本仓库 fork 自上游 freqtrade，为保持与上游同步（sync）的能力，`freqtrade/` 目录下的所有文件仅作为参考阅读，**任何情况下都不允许修改**。
+4. **每个策略独立文件夹** — 每个策略在 `user_data/strategies/` 下创建独立子目录，策略脚本与设计文档内聚管理。
+5. **使用 `uv` 运行所有命令** — 所有 freqtrade CLI 命令统一通过 `uv run` 执行（如 `uv run freqtrade backtesting ...`），不使用裸 `freqtrade` 命令。
+
+## 项目概述
+
+这是一个基于 [freqtrade](https://github.com/freqtrade/freqtrade) 的个人定制仓库，用作**交易策略实验场**。核心工作流：**编写策略 → 回测验证 → 迭代优化**，用于验证交易想法。`freqtrade/` 仅作为参考阅读，**禁止修改**。
+
+## 任务范围
+
+- 在 `user_data/strategies/` 中编写新策略
+- 修改或优化已有策略
+- 编写回测配置文件
+- 运行回测并分析结果
+- Hyperopt 参数调优
+- 下载市场数据用于回测
+
+## 项目结构
+
+```
+freqtrade/                # 框架核心 — 仅参考阅读，绝对禁止修改
+user_data/
+  strategies/             # 自定义策略存放目录（每个策略一个子文件夹）
+    MyStrategy/           # 示例：策略独立目录
+      MyStrategy.py       # 策略脚本
+      design.md           # 策略设计文档
+  data/                   # 已下载的 OHLCV 市场数据
+  backtest_results/       # 回测输出结果
+  hyperopts/              # 自定义 hyperopt 损失函数
+  notebooks/              # Jupyter 分析笔记本
+config_examples/          # 示例配置文件
+tests/                    # 框架测试套件
+docs/                     # Freqtrade 文档
+```
+
+## 策略开发规范
+
+### 文件位置与命名
+
+- 每个策略在 `user_data/strategies/` 下创建**独立子目录**，策略脚本与设计文档内聚管理
+- 目录结构示例：`user_data/strategies/RsiMacdStrategy/RsiMacdStrategy.py` + `design.md`
+- 文件名必须与类名一致（例如 `RsiMacdStrategy.py` 包含类 `RsiMacdStrategy`）
+- 策略类名即 CLI `--strategy` 参数的值，运行时通过 `--strategy-path` 指定策略目录
+
+### 必须实现的结构
+
+每个策略必须继承 `IStrategy` 并实现以下三个方法：
+
+```python
+from freqtrade.strategy import IStrategy
+from pandas import DataFrame
+
+class MyStrategy(IStrategy):
+    INTERFACE_VERSION = 3
+
+    # -- 核心配置 --
+    timeframe = "5m"
+    minimal_roi = {"0": 0.04}
+    stoploss = -0.10
+    startup_candle_count: int = 200
+
+    def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        return dataframe
+
+    def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        return dataframe
+
+    def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+        return dataframe
+```
+
+### 信号列名（INTERFACE_VERSION = 3）
+
+使用以下列名生成信号：
+
+- `enter_long` / `exit_long` — 做多入场 / 退出
+- `enter_short` / `exit_short` — 做空入场 / 退出
+- `enter_tag` / `exit_tag` — 信号标签（最长 64 字符）
+
+**禁止**使用已废弃的 `buy` / `sell` 列名。
+
+### 技术指标库
+
+标准导入：
+
+```python
+import talib.abstract as ta
+from technical import qtpylib
+import numpy as np
+```
+
+常用指标（通过 `talib.abstract`）：
+- `ta.RSI(dataframe, timeperiod=14)`
+- `ta.MACD(dataframe, fastperiod=12, slowperiod=26, signalperiod=9)`
+- `ta.BBANDS(dataframe, timeperiod=20, nbdevup=2, nbdevdn=2)`
+- `ta.EMA(dataframe, timeperiod=21)` / `ta.SMA(dataframe, timeperiod=21)`
+- `ta.ATR(dataframe, timeperiod=14)`
+- `ta.STOCH(dataframe, ...)` / `ta.ADX(dataframe, timeperiod=14)`
+
+### 编码模式
+
+- **仅使用向量化操作**：使用 pandas 向量化运算，禁止 `for` 循环或 `iloc[-1]` 遍历行。
+- **引用前一根 K 线**：使用 `dataframe.shift(1)` 或 `qtpylib.crossed_above()`。
+- **入场/出场赋值**：使用 `dataframe.loc[conditions, "enter_long"] = 1` 模式。
+- **成交量守卫**：信号条件中必须包含 `dataframe["volume"] > 0`。
+- **Hyperopt 参数**：使用 `IntParameter`、`DecimalParameter`、`RealParameter`、`BooleanParameter` 定义可调参数，通过 `.value` 访问，如 `self.buy_rsi.value`。
+
+### Hyperopt 参数定义
+
+```python
+from freqtrade.strategy import IntParameter, DecimalParameter, BooleanParameter
+
+class MyStrategy(IStrategy):
+    buy_rsi = IntParameter(low=1, high=50, default=30, space="buy", optimize=True)
+    sell_rsi = IntParameter(low=50, high=100, default=70, space="sell", optimize=True)
+```
+
+### 高级别时间框架数据（Informative）
+
+使用 `@informative` 装饰器：
+
+```python
+from freqtrade.strategy import informative
+
+@informative('1h')
+def populate_indicators_1h(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
+    dataframe['rsi'] = ta.RSI(dataframe, timeperiod=14)
+    return dataframe
+```
+
+### 自定义止损
+
+```python
+use_custom_stoploss = True
+
+def custom_stoploss(self, pair: str, trade: 'Trade', current_time: datetime,
+                    current_rate: float, current_profit: float, after_fill: bool,
+                    **kwargs) -> float:
+    return -0.05
+```
+
+## 常用 CLI 命令
+
+### 从模板创建新策略
+
+```bash
+uv run freqtrade new-strategy --strategy <策略名>
+```
+
+### 下载市场数据
+
+```bash
+uv run freqtrade download-data --config config.json --pairs BTC/USDT ETH/USDT --timeframes 5m 1h --timerange 20230101-
+```
+
+### 运行回测
+
+```bash
+uv run freqtrade backtesting --config config.json --strategy <策略名> --timerange 20230101-20240101
+```
+
+### 对比多个策略
+
+```bash
+uv run freqtrade backtesting --config config.json --strategy-list Strategy1 Strategy2 --timerange 20230101-20240101
+```
+
+### 运行 Hyperopt（参数优化）
+
+```bash
+uv run freqtrade hyperopt --config config.json --strategy <策略名> --hyperopt-loss SharpeHyperOptLoss --spaces buy sell --timerange 20230101-20240101
+```
+
+### 列出所有策略
+
+```bash
+uv run freqtrade list-strategies --strategy-path user_data/strategies/
+```
+
+## 质量检查
+
+修改策略代码后运行以下命令：
+
+```bash
+# Ruff 代码检查
+ruff check user_data/strategies/
+
+# 类型检查（如适用）
+mypy user_data/strategies/
+```
+
+## 关键规则
+
+1. **禁止修改 `freqtrade/` 核心代码**，除非明确要求。
+2. **新策略一律使用 INTERFACE_VERSION = 3**。
+3. **仅使用 pandas 向量化操作** — 禁止遍历 dataframe 行。
+4. **信号条件必须包含成交量守卫**（`dataframe["volume"] > 0`）。
+5. **策略文件名必须与类名一致**。
+6. **可调参数使用 Hyperopt 参数类型**，以便后续优化。
+7. **编写或修改策略后必须运行 lint 检查**。
+8. **策略完成后必须通过回测验证**。
