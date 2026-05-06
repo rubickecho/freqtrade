@@ -15,7 +15,7 @@ from freqtrade.strategy import (
 )
 
 
-class TrendFlow(IStrategy):
+class TrendFlowV1(IStrategy):
     INTERFACE_VERSION = 3
     can_short = True
     timeframe = "4h"
@@ -44,8 +44,6 @@ class TrendFlow(IStrategy):
     def informative_pairs(self):
         return []
 
-    # ── 4h indicators ──────────────────────────────────────────
-
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["atr"] = ta.ATR(dataframe, timeperiod=14)
         dataframe["atr_ma"] = dataframe["atr"].rolling(window=50, min_periods=50).mean()
@@ -63,8 +61,6 @@ class TrendFlow(IStrategy):
         dataframe.loc[(dataframe["close"] < dataframe["ema"]) & dataframe["trending"], "trend"] = -1
 
         return dataframe
-
-    # ── entry: trend crosses above/below EMA ───────────────────
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["enter_long"] = 0
@@ -87,8 +83,6 @@ class TrendFlow(IStrategy):
 
         return df
 
-    # ── exit: trend crosses back ───────────────────────────────
-
     def populate_exit_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe["exit_long"] = 0
         dataframe["exit_short"] = 0
@@ -97,8 +91,6 @@ class TrendFlow(IStrategy):
         dataframe.loc[dataframe["trend"] != -1, "exit_short"] = 1
 
         return dataframe
-
-    # ── leverage ───────────────────────────────────────────────
 
     def leverage(
         self,
@@ -112,8 +104,6 @@ class TrendFlow(IStrategy):
         **kwargs: Any,
     ) -> float:
         return min(3.0, max_leverage)
-
-    # ── custom_stoploss: ATR-based, always active ──────────────
 
     def custom_stoploss(
         self,

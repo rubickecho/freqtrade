@@ -32,44 +32,20 @@
     "use_order_book": false
   },
 
+  "strategy": "TrendFlowV2",
+  "strategy_path": "user_data/strategies/TrendFlow/v2/",
+
   "exchange": {
     "name": "okx",
     "key": "",
     "secret": "",
-    "ccxt_config": {},
-    "ccxt_async_config": {},
     "pair_whitelist": [
       "BTC/USDT:USDT",
       "ETH/USDT:USDT",
       "SOL/USDT:USDT",
       "HYPE/USDT:USDT",
       "LINK/USDT:USDT"
-    ],
-    "pair_blacklist": []
+    ]
   },
-
-  "pairlists": [
-    {
-      "method": "StaticPairList"
-    }
-  ],
-
-  "telegram": {
-    "enabled": false,
-    "token": "",
-    "chat_id": ""
-  },
-
-  "bot_name": "TrendFlow",
-  "initial_state": "running",
-  "force_entry_enable": false,
-  "internals": {
-    "process_throttle_secs": 5
-  },
-
-  "strategy": "TrendFlow",
-  "strategy_path": "user_data/strategies/TrendFlow/",
-
-  "db_url": "sqlite:///user_data/tradesv3_trendflow.sqlite",
-  "logfile": "user_data/logs/freqtrade_trendflow.log"
+  "pairlists": [{"method": "StaticPairList"}]
 }

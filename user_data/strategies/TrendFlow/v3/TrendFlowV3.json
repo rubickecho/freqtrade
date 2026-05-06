@@ -1,0 +1,29 @@
+{
+  "strategy_name": "TrendFlowV3",
+  "params": {
+    "roi": {
+      "0": 1.0
+    },
+    "stoploss": {
+      "stoploss": -0.5
+    },
+    "trailing": {
+      "trailing_stop": false,
+      "trailing_stop_positive": null,
+      "trailing_stop_positive_offset": 0.0,
+      "trailing_only_offset_is_reached": false
+    },
+    "max_open_trades": {
+      "max_open_trades": 5
+    },
+    "buy": {
+      "adx_threshold": 17,
+      "ema_period": 39
+    },
+    "sell": {
+      "atr_stop_mult": 1.5
+    }
+  },
+  "ft_stratparam_v": 1,
+  "export_time": "2026-05-06 08:27:55.880373+00:00"
+}

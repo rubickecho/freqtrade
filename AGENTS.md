@@ -28,8 +28,14 @@ freqtrade/                # 框架核心 — 仅参考阅读，绝对禁止修�
 user_data/
   strategies/             # 自定义策略存放目录（每个策略一个子文件夹）
     MyStrategy/           # 示例：策略独立目录
-      MyStrategy.py       # 策略脚本
-      design.md           # 策略设计文档
+      CHANGELOG.md        # 迭代日志（必需）
+      v1/                 # 版本子目录
+        MyStrategyV1.py   # 策略脚本（类名含版本号）
+        config.json       # 回测配置
+        design.md         # 策略设计文档
+      v2/                 # 后续迭代版本
+        MyStrategyV2.py
+        config.json
   data/                   # 已下载的 OHLCV 市场数据
   backtest_results/       # 回测输出结果
   hyperopts/              # 自定义 hyperopt 损失函数
@@ -38,6 +44,45 @@ config_examples/          # 示例配置文件
 tests/                    # 框架测试套件
 docs/                     # Freqtrade 文档
 ```
+
+## 策略版本迭代规范
+
+### 目录结构
+
+每个策略目录采用 `v1/` `v2/` ... 子目录管理版本，根目录维护 `CHANGELOG.md`。
+
+### 命名规则
+
+| 项目 | 规则 | 示例 |
+|------|------|------|
+| 版本目录名 | `v` + 数字，从 1 开始 | `v1/`, `v2/` |
+| 策略类名 | 策略名 + `V` + 数字 | `TrendFlowV1`, `TrendFlowV2` |
+| 策略文件名 | 与类名一致 | `TrendFlowV1.py` |
+| 配置文件 | 统一命名为 `config.json`（在版本目录内） | `v1/config.json` |
+
+### CHANGELOG.md 格式
+
+每个策略目录的 `CHANGELOG.md` 按版本倒序记录：
+
+```markdown
+# 策略名 迭代日志
+
+## vN — 标题（状态）
+- **日期：** YYYY-MM-DD
+- **类型：** 初始版本 / 优化 / 重构 / 修复
+- **变更：** 简要说明
+- **回测结果：** 关键指标（收益 / CAGR / 回撤 / Profit Factor / Sharpe）
+- **已知问题：** 如有
+- **文件：** vN/StrategyFile.py + vN/config.json
+```
+
+### 迭代规则
+
+1. **每次优化前创建新版本目录**，禁止原地修改已有版本
+2. **先写 CHANGELOG 记录变更意图**，再实现代码
+3. **回测完成后更新 CHANGELOG 中的回测结果**
+4. **删除旧版本根目录下的遗留文件**（迁移完成后）
+5. **每个版本自包含**：策略文件 + 配置文件均在版本目录内
 
 ## 策略开发规范
 
