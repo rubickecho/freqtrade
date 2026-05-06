@@ -195,6 +195,18 @@ ruff check user_data/strategies/
 mypy user_data/strategies/
 ```
 
+## 回测规范
+
+**每次回测必须附带策略参数说明**，包含以下信息（从回测日志和配置中提取）：
+
+| 类别 | 必需参数 |
+|------|----------|
+| 基础 | 交易所, Trading Mode, Timeframe（含辅助框架） |
+| 资金 | 初始本金, stake_amount, max_open_trades, 杠杆 |
+| 风控 | stoploss (硬止损), minimal_roi (止盈) |
+| 策略（如适用） | 自定义止损/止盈参数, 入场门槛参数 |
+| 数据 | 回测时间范围, 品种 |
+
 ## 关键规则
 
 1. **禁止修改 `freqtrade/` 核心代码**，除非明确要求。
@@ -205,3 +217,4 @@ mypy user_data/strategies/
 6. **可调参数使用 Hyperopt 参数类型**，以便后续优化。
 7. **编写或修改策略后必须运行 lint 检查**。
 8. **策略完成后必须通过回测验证**。
+9. **回测结果必须附带策略参数说明**（见上方「回测规范」章节）。
